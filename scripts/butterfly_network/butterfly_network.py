@@ -47,7 +47,7 @@ class BinaryButterflyGraph:
                         self.nodes_grid[i - 1][m].above_neighbors.append(new_node)
                         
                 else:
-                    row.append(ButterflyNode())
+                    row.append(ButterflyNode(q=q))
             self.nodes_grid.append(row)
             self.flattened_nodes_list += row
         adversarial_sample = random.sample(self.flattened_nodes_list, num_adversaries)
@@ -80,19 +80,61 @@ class BinaryButterflyGraph:
                     string_representation += "H  "
             string_representation += "\n"
         return string_representation
+    def find_row_with_no_learning(self):
+        for i in range(len(self.nodes_grid)):
+            all_wrong = True
+            for j in range(len(self.nodes_grid[0])):
+                if self.nodes_grid[i] != 0:
+                    all_wrong = False
+                    break
+            if all_wrong:
+                return i
+        return -1
 
 
 if __name__ == "__main__":
-    k = 5
-    q = 2 / 3
+    k = 15
+    q = 0.6
     m = 2
     # randomly distribute 1/m*2^-m adversaries
-    network = BinaryButterflyGraph(k, q, int((((k + 1)) / m) * (2 **(k - m))))
-    # make every 2^m node on the bottom row an adversary
-    """ for i in range((k + 1)):
+    #network = BinaryButterflyGraph(k, q, int((((k + 1)) / m) * (2 **(k - m))))
+    #start with no adversaries
+    network = BinaryButterflyGraph(k, q)
+    # make every 2^m node on the the bottom row an adversary
+    for i in range(1):
         
         for j in range(2 ** (k - m)):
-            network.nodes_grid[i][2**(m) * j].is_adversary = True """
+            network.nodes_grid[i][2**(m) * j].is_adversary = True
+    # make all of the first 2^m nodes in the first row adversaries
+    """ for i in range(1):
+        
+        for j in range(2 ** (k - m)):
+            network.nodes_grid[i][j].is_adversary = True """
+    # put adversaries alternating in columns in the bottom 2**m rows:
+    """ for i in range(2**m):
+        for j in range(2**(k - m)):
+            network.nodes_grid[i][2**(m) * j + i].is_adversary = True """
+    # put adversaries randomly in first 2 rows such that they cover both columns
+    """ first_row =[]
+    for i in range(2):
+        for j in range(2**(k)):
+            if i == 0 and j < 2**(k - 1):
+                first_row.append(j)
+                network.nodes_grid[i][j].is_adversary = True
+            elif i == 1 and j not in first_row:
+                network.nodes_grid[i][j].is_adversary = True
+ """
+    # put adversaries on the first third of the first row
+    """ for j in range((2**k) - 16):
+        network.nodes_grid[0][j].is_adversary = True """
+    # make two adversaries on the bottom row that immediately intersect
+    """ network.nodes_grid[0][0].is_adversary = True
+    network.nodes_grid[0][2**(k-1)].is_adversary = True """
+
+
+
+
+
     # randomly make half 2^{-m} of the columns 2^{-m}-full of adversaries
     """ rows = random.sample([i for i in range(k + 1)], (k + 1) // (2**m))
     for row in rows:
@@ -102,8 +144,9 @@ if __name__ == "__main__":
     #network.traverse_tree(network.nodes_grid[0][1])
     #print(network)
     #print(network.print_adversaries())
-    print(network.percentage_adversaries())
+    #print(network.percentage_adversaries())
     print(network.compute_learning_rate())
+    print(network.nodes_grid[-1][-1].compute_probability())
 
 
                 
