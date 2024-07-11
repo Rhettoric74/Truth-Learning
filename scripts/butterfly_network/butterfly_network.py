@@ -90,22 +90,63 @@ class BinaryButterflyGraph:
             if all_wrong:
                 return i
         return -1
+    
+class RandomFourRegularGraph(BinaryButterflyGraph):
+    def __init__(self, k, q, num_adversaries = 0):
+        self.flattened_nodes_list = []
+        self.nodes_grid = []
+        for i in range(k + 1):
+            row = [ButterflyNode(q=q) for j in range(2**k)]
+            vertex_match_counts = {row[j]:0 for j in range(2**k)}
+            if i >= 1:
+                for j in range(2**k):
+                    cur_node = self.nodes_grid[i - 1][j]
+                    child_nodes = None
+                    if len(list(vertex_match_counts.keys())) < 4:
+                        unmatched_node = None
+                        for key in vertex_match_counts.keys():
+                            if vertex_match_counts[key] == 0:
+                                unmatched_node = key
+                        if unmatched_node != None:
+                            other_nodes = copy.copy(list(vertex_match_counts.keys()))
+                            other_nodes.remove(unmatched_node)
+                            child_nodes = [unmatched_node, random.choice(other_nodes)]
+                    if child_nodes == None:
+                        child_nodes = random.sample(list(vertex_match_counts.keys()), 2)
+                    cur_node.above_neighbors = child_nodes
+                    child_nodes[0].below_neighbors.append(cur_node)
+                    child_nodes[1].below_neighbors.append(cur_node)
+                    vertex_match_counts[child_nodes[0]] += 1
+                    vertex_match_counts[child_nodes[1]] += 1
+                    if vertex_match_counts[child_nodes[0]] > 1:
+                        vertex_match_counts.pop(child_nodes[0])
+                    if vertex_match_counts[child_nodes[1]] > 1:
+                         vertex_match_counts.pop(child_nodes[1])
+            self.nodes_grid.append(row)
+            self.flattened_nodes_list += row
+
+
+        adversarial_sample = random.sample(self.flattened_nodes_list, num_adversaries)
+        for node in adversarial_sample:
+            node.is_adversary = True
 
 
 if __name__ == "__main__":
-    k = 15
-    q = 0.6
-    m = 2
+    k = 13
+    q = 2 / 3
+    m = 1
     # randomly distribute 1/m*2^-m adversaries
     #network = BinaryButterflyGraph(k, q, int((((k + 1)) / m) * (2 **(k - m))))
     #start with no adversaries
-    network = BinaryButterflyGraph(k, q)
+    #number_adversaries=((2**k))
+    number_adversaries = 2**k
+    network = BinaryButterflyGraph(k, q, num_adversaries=number_adversaries)
     # make every 2^m node on the the bottom row an adversary
-    for i in range(1):
+    """ for i in range(1):
         
         for j in range(2 ** (k - m)):
-            network.nodes_grid[i][2**(m) * j].is_adversary = True
-    # make all of the first 2^m nodes in the first row adversaries
+            network.nodes_grid[i][2**(m) * j].is_adversary = True """
+    # make all of the first 2^(k - m) nodes in the first row adversaries
     """ for i in range(1):
         
         for j in range(2 ** (k - m)):
@@ -144,9 +185,11 @@ if __name__ == "__main__":
     #network.traverse_tree(network.nodes_grid[0][1])
     #print(network)
     #print(network.print_adversaries())
-    #print(network.percentage_adversaries())
+    print(network.percentage_adversaries())
     print(network.compute_learning_rate())
     print(network.nodes_grid[-1][-1].compute_probability())
+    randomly_linked_network = RandomFourRegularGraph(k, q, number_adversaries)
+    print(randomly_linked_network.compute_learning_rate())
 
 
                 
