@@ -3,21 +3,26 @@ import random
 import numpy as np
 import copy
 class ButterflyNode:
-    def __init__(self, above_neigbors = [], below_neighbors = [], is_adversary = False, q = 2 / 3):
+    def __init__(self, above_neigbors = [], below_neighbors = [], is_adversary = False, q = 2 / 3, know_truth = False):
         self.above_neighbors = copy.copy(above_neigbors)
         self.below_neighbors = copy.copy(below_neighbors)
         self.is_adversary = is_adversary
         self.probability = None
         self.q = q
+        self.adversaries_know_truth = know_truth
     def compute_probability(self):
         if self.probability != None:
             return self.probability
-        elif self.is_adversary:
-            self.probability = 0
-            return 0
         elif self.below_neighbors == []:
-            self.probability = self.q
-            return self.q
+            if self.is_adversary and not self.adversaries_know_truth:
+                self.probability = 1 - self.q
+                return 1 - self.q
+            elif self.is_adversary:
+                self.probability = 0
+                return 0
+            else:
+                self.probability = self.q
+                return self.q
         else:
             # compute the probability of guessing correctly
             # from your below neighbors
@@ -26,10 +31,17 @@ class ButterflyNode:
             right_prob = self.below_neighbors[1].compute_probability()
             prob = left_prob * right_prob
             prob += self.q * (left_prob * (1 - right_prob) + right_prob * (1 - left_prob))
-            self.probability = prob
-            return prob
+            if self.is_adversary and not self.adversaries_know_truth:
+                self.probability = 1 - prob
+                return 1 - prob
+            elif self.is_adversary:
+                self.probability = 0
+                return 0
+            else:
+                self.probability = prob
+                return prob
 class BinaryButterflyGraph:
-    def __init__(self, k, q, num_adversaries = 0):
+    def __init__(self, k, q, num_adversaries = 0, adversaries_know_truth = False):
         self.flattened_nodes_list = []
         self.nodes_grid = []
         for i in range(k + 1):
@@ -39,7 +51,7 @@ class BinaryButterflyGraph:
                     # flip the i-th most significant bit of j to obtain m.
                     bitmask = 1 << (k - i)
                     m = (j ^ bitmask) % (2 ** k)
-                    new_node = ButterflyNode(below_neighbors=[self.nodes_grid[i - 1][j], self.nodes_grid[i - 1][m]], q=q)
+                    new_node = ButterflyNode(below_neighbors=[self.nodes_grid[i - 1][j], self.nodes_grid[i - 1][m]], q=q, know_truth=adversaries_know_truth)
                     row.append(new_node)
                     if new_node not in self.nodes_grid[i - 1][j].above_neighbors:
                         self.nodes_grid[i - 1][j].above_neighbors.append(new_node)
@@ -47,7 +59,7 @@ class BinaryButterflyGraph:
                         self.nodes_grid[i - 1][m].above_neighbors.append(new_node)
                         
                 else:
-                    row.append(ButterflyNode(q=q))
+                    row.append(ButterflyNode(q=q, know_truth=adversaries_know_truth))
             self.nodes_grid.append(row)
             self.flattened_nodes_list += row
         adversarial_sample = random.sample(self.flattened_nodes_list, num_adversaries)
@@ -92,11 +104,11 @@ class BinaryButterflyGraph:
         return -1
     
 class RandomFourRegularGraph(BinaryButterflyGraph):
-    def __init__(self, k, q, num_adversaries = 0):
+    def __init__(self, k, q, num_adversaries = 0, adversareis_know_truth=False):
         self.flattened_nodes_list = []
         self.nodes_grid = []
         for i in range(k + 1):
-            row = [ButterflyNode(q=q) for j in range(2**k)]
+            row = [ButterflyNode(q=q, know_truth=adversareis_know_truth) for j in range(2**k)]
             vertex_match_counts = {row[j]:0 for j in range(2**k)}
             if i >= 1:
                 for j in range(2**k):
@@ -132,20 +144,21 @@ class RandomFourRegularGraph(BinaryButterflyGraph):
 
 
 if __name__ == "__main__":
-    k = 13
+    adv_know_truth = True
+    k = 4
     q = 2 / 3
-    m = 1
+    m = k - 3
     # randomly distribute 1/m*2^-m adversaries
     #network = BinaryButterflyGraph(k, q, int((((k + 1)) / m) * (2 **(k - m))))
     #start with no adversaries
     #number_adversaries=((2**k))
-    number_adversaries = 2**k
-    network = BinaryButterflyGraph(k, q, num_adversaries=number_adversaries)
+    random_adversaries = 0
+    network = BinaryButterflyGraph(k, q, num_adversaries=random_adversaries, adversaries_know_truth=adv_know_truth)
     # make every 2^m node on the the bottom row an adversary
-    """ for i in range(1):
+    for i in range(1):
         
         for j in range(2 ** (k - m)):
-            network.nodes_grid[i][2**(m) * j].is_adversary = True """
+            network.nodes_grid[i][2**(m) * j].is_adversary = True
     # make all of the first 2^(k - m) nodes in the first row adversaries
     """ for i in range(1):
         
@@ -183,13 +196,17 @@ if __name__ == "__main__":
         for col in columns:
             network.nodes_grid[row][col].is_adversary = True """
     #network.traverse_tree(network.nodes_grid[0][1])
-    #print(network)
-    #print(network.print_adversaries())
+    print(network)
+    print(network.print_adversaries())
     print(network.percentage_adversaries())
     print(network.compute_learning_rate())
-    print(network.nodes_grid[-1][-1].compute_probability())
-    randomly_linked_network = RandomFourRegularGraph(k, q, number_adversaries)
+    randomly_linked_network = RandomFourRegularGraph(k, q, random_adversaries, adversareis_know_truth=adv_know_truth)
+    for i in range(1):
+        for j in range(2 ** (k - m)):
+            randomly_linked_network.nodes_grid[i][2**(m) * j].is_adversary = True
     print(randomly_linked_network.compute_learning_rate())
+    print(randomly_linked_network)
+    print(randomly_linked_network.print_adversaries())
 
 
                 
