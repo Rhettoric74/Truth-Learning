@@ -2,6 +2,7 @@ from compute_probabilities import *
 import random
 import numpy as np
 import copy
+import json
 class ButterflyNode:
     def __init__(self, above_neigbors = [], below_neighbors = [], is_adversary = False, q = 2 / 3, know_truth = False):
         self.above_neighbors = copy.copy(above_neigbors)
@@ -102,6 +103,15 @@ class BinaryButterflyGraph:
             if all_wrong:
                 return i
         return -1
+    def print_averages_per_row(self):
+        averages_per_row = ""
+        for i in range(len(self.nodes_grid)):
+            row_average = np.mean([self.nodes_grid[i][j].compute_probability() for j in range(len(self.nodes_grid[i]))])
+            averages_per_row += "{:.3f}".format(row_average) + "\n"
+        print(averages_per_row)
+    def compute_average_on_top_row(self):
+        return np.mean([self.nodes_grid[-1][j].compute_probability() for j in range(len(self.nodes_grid[-1]))])
+            
     
 class RandomFourRegularGraph(BinaryButterflyGraph):
     def __init__(self, k, q, num_adversaries = 0, adversareis_know_truth=False):
@@ -144,70 +154,87 @@ class RandomFourRegularGraph(BinaryButterflyGraph):
 
 
 if __name__ == "__main__":
-    adv_know_truth = True
-    k = 4
-    q = 2 / 3
-    m = k - 3
-    # randomly distribute 1/m*2^-m adversaries
-    #network = BinaryButterflyGraph(k, q, int((((k + 1)) / m) * (2 **(k - m))))
-    #start with no adversaries
-    #number_adversaries=((2**k))
-    random_adversaries = 0
-    network = BinaryButterflyGraph(k, q, num_adversaries=random_adversaries, adversaries_know_truth=adv_know_truth)
-    # make every 2^m node on the the bottom row an adversary
-    for i in range(1):
-        
-        for j in range(2 ** (k - m)):
-            network.nodes_grid[i][2**(m) * j].is_adversary = True
-    # make all of the first 2^(k - m) nodes in the first row adversaries
-    """ for i in range(1):
-        
-        for j in range(2 ** (k - m)):
-            network.nodes_grid[i][j].is_adversary = True """
-    # put adversaries alternating in columns in the bottom 2**m rows:
-    """ for i in range(2**m):
-        for j in range(2**(k - m)):
-            network.nodes_grid[i][2**(m) * j + i].is_adversary = True """
-    # put adversaries randomly in first 2 rows such that they cover both columns
-    """ first_row =[]
-    for i in range(2):
-        for j in range(2**(k)):
-            if i == 0 and j < 2**(k - 1):
-                first_row.append(j)
-                network.nodes_grid[i][j].is_adversary = True
-            elif i == 1 and j not in first_row:
-                network.nodes_grid[i][j].is_adversary = True
- """
-    # put adversaries on the first third of the first row
-    """ for j in range((2**k) - 16):
-        network.nodes_grid[0][j].is_adversary = True """
-    # make two adversaries on the bottom row that immediately intersect
-    """ network.nodes_grid[0][0].is_adversary = True
-    network.nodes_grid[0][2**(k-1)].is_adversary = True """
-
-
-
-
-
-    # randomly make half 2^{-m} of the columns 2^{-m}-full of adversaries
-    """ rows = random.sample([i for i in range(k + 1)], (k + 1) // (2**m))
-    for row in rows:
-        columns = random.sample([i for i in range(2**k)], 2**(k - 2))
-        for col in columns:
-            network.nodes_grid[row][col].is_adversary = True """
-    #network.traverse_tree(network.nodes_grid[0][1])
-    print(network)
-    print(network.print_adversaries())
-    print(network.percentage_adversaries())
-    print(network.compute_learning_rate())
-    randomly_linked_network = RandomFourRegularGraph(k, q, random_adversaries, adversareis_know_truth=adv_know_truth)
-    for i in range(1):
-        for j in range(2 ** (k - m)):
-            randomly_linked_network.nodes_grid[i][2**(m) * j].is_adversary = True
-    print(randomly_linked_network.compute_learning_rate())
-    print(randomly_linked_network)
-    print(randomly_linked_network.print_adversaries())
-
-
+    q_values = [0.5 + 0.05 * i for i in range(1, 10)]
+    beta_values = [0.05 * i for i in range(1, 10)]
+    results = []
+    for q in q_values:
+        for beta in beta_values:
+            adv_know_truth = True
+            k = 15
+            #q = 2 / 3
+            m = 1
+            predicted_last_row_learning_value = 1 - beta / ((1 - beta) * (2 * q - 1))
+            # randomly distribute 1/m*2^-m adversaries
+            #network = BinaryButterflyGraph(k, q, int((((k + 1)) / m) * (2 **(k - m))))
+            #start with no adversaries
+            number_adversaries= int((k + 1) * (2**k) * (beta))
+            random_adversaries = 0
+            network = BinaryButterflyGraph(k, q, num_adversaries=number_adversaries, adversaries_know_truth=adv_know_truth)
+            # make every 2^m node on the the bottom row an adversary
+            """ for i in range(1):
                 
-        
+                for j in range(2 ** (k - m)):
+                    network.nodes_grid[i][2**(m) * j].is_adversary = True """
+            # make all of the first 2^(k - m) nodes in the first row adversaries
+            """ for i in range(1):
+                
+                for j in range(2 ** (k - m)):
+                    network.nodes_grid[i][j].is_adversary = True """
+            # put adversaries alternating in columns in the bottom 2**m rows:
+            """ for i in range(2**m):
+                for j in range(2**(k - m)):
+                    network.nodes_grid[i][2**(m) * j + i].is_adversary = True """
+            # put adversaries randomly in first 2 rows such that they cover both columns
+            """ first_row =[]
+            for i in range(2):
+                for j in range(2**(k)):
+                    if i == 0 and j < 2**(k - 1):
+                        first_row.append(j)
+                        network.nodes_grid[i][j].is_adversary = True
+                    elif i == 1 and j not in first_row:
+                        network.nodes_grid[i][j].is_adversary = True
+        """
+            # put adversaries on the first third of the first row
+            """ for j in range((2**k) - 16):
+                network.nodes_grid[0][j].is_adversary = True """
+            # make two adversaries on the bottom row that immediately intersect
+            """ network.nodes_grid[0][0].is_adversary = True
+            network.nodes_grid[0][2**(k-1)].is_adversary = True """
+
+
+
+
+
+            # randomly make half 2^{-m} of the columns 2^{-m}-full of adversaries
+            """ rows = random.sample([i for i in range(k + 1)], (k + 1) // (2**m))
+            for row in rows:
+                columns = random.sample([i for i in range(2**k)], 2**(k - 2))
+                for col in columns:
+                    network.nodes_grid[row][col].is_adversary = True """
+            #network.traverse_tree(network.nodes_grid[0][1])
+            #print(network)
+            #print(network.print_adversaries())
+            print(network.percentage_adversaries())
+            print(network.compute_learning_rate())
+            network.print_averages_per_row()
+            results_dict = {"k_value":k,
+                            "q_value":q,
+                            "beta_value":beta,
+                            "predicted_last_row_learning_rate":predicted_last_row_learning_value,
+                            "simulated_last_row_learning_rate":network.compute_average_on_top_row()
+                            }
+            results.append(results_dict)
+            """ randomly_linked_network = RandomFourRegularGraph(k, q, random_adversaries, adversareis_know_truth=adv_know_truth)
+            for i in range(1):
+                for j in range(2 ** (k - m)):
+                    randomly_linked_network.nodes_grid[i][2**(m) * j].is_adversary = True
+            print(randomly_linked_network.compute_learning_rate())
+            print(randomly_linked_network)
+            print(randomly_linked_network.print_adversaries()) """
+    print(results)
+    with open("simulation_results.json", "w") as f:
+        json.dump(results, f)
+
+
+                        
+                
